@@ -1,0 +1,120 @@
+
+@baseUrl = http://localhost:3000
+
+
+### 1. Comprobar que la API está disponible
+GET {{baseUrl}}/health
+Accept: application/json
+
+
+### 2. Registrar al primer usuario
+# @name crearAna
+POST {{baseUrl}}/users
+Content-Type: application/json
+Idempotency-Key: demo-usuario-ana-001
+
+{
+  "name": "Ana",
+  "lastName": "Ruiz",
+  "email": "ana.ruiz.demo@example.com"
+}
+
+
+### 3. Registrar al segundo usuario
+# @name crearLuis
+POST {{baseUrl}}/users
+Content-Type: application/json
+Idempotency-Key: demo-usuario-luis-001
+
+{
+  "name": "Luis",
+  "lastName": "Gomez",
+  "email": "luis.gomez.demo@example.com"
+}
+
+
+### 4. Crear una tarea; su estado inicial debe ser "open"
+# @name crearTarea
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+Idempotency-Key: demo-tarea-001
+
+{
+  "title": "Preparar demostración de la API",
+  "description": "Tarea colaborativa utilizada en el video del reto GEEST."
+}
+
+
+### 5. Asignar los dos usuarios a la tarea
+# @name asignarUsuarios
+POST {{baseUrl}}/tasks/{{crearTarea.response.body.$.id}}/assign
+Content-Type: application/json
+Idempotency-Key: demo-asignacion-001
+
+{
+  "userIds": [
+    {{crearAna.response.body.$.id}},
+    {{crearLuis.response.body.$.id}}
+  ]
+}
+
+
+### 6. Consultar la tarea antes de completar participaciones
+GET {{baseUrl}}/tasks/{{crearTarea.response.body.$.id}}
+Accept: application/json
+
+
+### 7. Ana completa su parte
+### La tarea debe seguir "open" y Luis debe aparecer en pendingUsers.
+# @name completarAna
+POST {{baseUrl}}/tasks/{{crearTarea.response.body.$.id}}/complete
+Content-Type: application/json
+Idempotency-Key: demo-completar-ana-001
+
+{
+  "userId": {{crearAna.response.body.$.id}}
+}
+
+
+### 8. Consultar la tarea después del primer completado
+GET {{baseUrl}}/tasks/{{crearTarea.response.body.$.id}}
+Accept: application/json
+
+
+### 9. Luis completa su parte
+### Al ser el último usuario pendiente, la tarea debe cambiar a "archived".
+# @name completarLuis
+POST {{baseUrl}}/tasks/{{crearTarea.response.body.$.id}}/complete
+Content-Type: application/json
+Idempotency-Key: demo-completar-luis-001
+
+{
+  "userId": {{crearLuis.response.body.$.id}}
+}
+
+
+### 10. Consultar el estado final de la tarea
+### Debe mostrar status "archived" y ambos usuarios con completed en true.
+GET {{baseUrl}}/tasks/{{crearTarea.response.body.$.id}}
+Accept: application/json
+
+
+### 11. Consultar los intentos de notificación
+### Si el worker todavía está procesando, vuelve a ejecutar esta petición unos segundos después.
+GET {{baseUrl}}/tasks/{{crearTarea.response.body.$.id}}/notifications
+Accept: application/json
+
+
+### 12. Consultar la bitácora completa de la tarea
+GET {{baseUrl}}/tasks/{{crearTarea.response.body.$.id}}/events
+Accept: application/json
+
+
+### 13. Listar todas las tareas archivadas
+GET {{baseUrl}}/tasks?status=archived
+Accept: application/json
+
+
+### 14. Consultar las tareas asignadas a Ana
+GET {{baseUrl}}/users/{{crearAna.response.body.$.id}}/tasks
+Accept: application/json
